@@ -10,58 +10,90 @@ import CoreData
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-
+    
     @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
-
+        entity: FoodEntity.entity(),
+        sortDescriptors: [NSSortDescriptor(keyPath: \FoodEntity.name, ascending: true)])
+    var Food: FetchedResults<FoodEntity>
+    
+    @State var textFieldTitle: String = ""
+    
     var body: some View {
-        List {
-            ForEach(items) { item in
-                Text("Item at \(item.timestamp!, formatter: itemFormatter)")
+        
+        NavigationView {
+            
+            VStack(spacing: 10) {
+                TextField("", text: $textFieldTitle)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 55)
+                    .background(Color(UIColor.secondarySystemBackground).cornerRadius(10))
+                    .padding(.horizontal, 10)
+                
+                Button(action: {addItem()}, label: {
+                    Text("저장")
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 55)
+                        .foregroundColor(.white)
+                        .background(Color("Peach").cornerRadius(10))
+                        .padding(.horizontal, 10)
+                    
+                })
+                
+                List {
+                    ForEach(Food) { foods in
+                        //과일에 이름이 없으면 빈문자열을 생성
+                        Text(foods.name ?? "아이템 없음")
+                            .onTapGesture {
+                                updateItems(food: foods)
+                            }
+                    }
+                    .onDelete(perform: deleteItems)
+                }
+                
+                .listStyle(PlainListStyle())
+                .navigationBarTitle("음식")
             }
-            .onDelete(perform: deleteItems)
-        }
-        .toolbar {
-            #if os(iOS)
-            EditButton()
-            #endif
-
-            Button(action: addItem) {
-                Label("Add Item", systemImage: "plus")
-            }
+            
         }
     }
-
+    
+    private func updateItems(food: FoodEntity) {
+        let currentName = food.name ?? ""
+        let newName = currentName + "!"
+        food.name = newName
+        saveItems()
+    }
+    
     private func addItem() {
         withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
+            //수정 부분
+            let newFood = FoodEntity(context: viewContext)
+            newFood.name = textFieldTitle
+            //textFieldTitle을 사용 후 재설정
+            textFieldTitle = ""
+            
+            saveItems()
         }
     }
-
+    
     private func deleteItems(offsets: IndexSet) {
         withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
+            
+            guard let index = offsets.first else { return }
+            let FoodEntity = Food[index]
+            viewContext.delete(FoodEntity)
+            saveItems()
+        }
+    }
+    
+    private func saveItems() {
+        do {
+            try viewContext.save()
+        } catch {
+            let nsError = error as NSError
+            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
         }
     }
 }

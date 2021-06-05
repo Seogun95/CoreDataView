@@ -18,3 +18,4 @@ struct CoreDataViewApp: App {
         }
     }
 }
+ 
